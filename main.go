@@ -15,23 +15,7 @@ const (
 	AskMe
 )
 
-type Card struct {
-	SideA int
-	SideB int
-}
-
-type Hand struct {
-	Cards      []*Card
-	IsComputer bool
-	Name       string
-	Color      string
-}
-
 type DrawPile struct {
-	Cards []*Card
-}
-
-type Board struct {
 	Cards []*Card
 }
 
@@ -94,20 +78,21 @@ func (d *DrawPile) Pick() *Card {
 	return card
 }
 
-func (b *Board) Left() int {
-	return board.Cards[0].SideA
-}
+func (b *Board) Play(h *Hand, index int, side Side) (error, *Card) {
 
-func (b *Board) Right() int {
-	return board.Cards[len(board.Cards)-1].SideB
-}
+	if len(board.Cards) == 0 {
+		card := h.Cards[index]
+		h.Cards[index] = h.Cards[len(h.Cards)-1]
+		h.Cards = h.Cards[:len(h.Cards)-1]
+		board.Cards = append([]*Card{card}, board.Cards...)
+		return nil, card
+	}
 
-func (b *Board) Play(h *Hand, index int, side Side) error {
 	playOnLeft := h.Cards[index].SideA == board.Left() || h.Cards[index].SideB == board.Left()
 	playOnRight := h.Cards[index].SideA == board.Right() || h.Cards[index].SideB == board.Right()
 
 	if !playOnLeft && !playOnRight {
-		return errors.New("Card cannot be played")
+		return errors.New("Card cannot be played"), nil
 	}
 
 	if playOnLeft && playOnRight {
@@ -141,20 +126,7 @@ func (b *Board) Play(h *Hand, index int, side Side) error {
 		board.Cards = append(board.Cards, card)
 	}
 
-	return nil
-}
-
-func (c *Card) CanPlay() bool {
-	return c.SideA == board.Left() ||
-		c.SideB == board.Left() ||
-		c.SideA == board.Right() ||
-		c.SideB == board.Right()
-}
-
-func (c *Card) Flip() {
-	tmp := c.SideA
-	c.SideA = c.SideB
-	c.SideB = tmp
+	return nil, card
 }
 
 func (h *Hand) CanPlay() bool {
@@ -166,25 +138,15 @@ func (h *Hand) CanPlay() bool {
 	return false
 }
 
-func (h *Hand) Play() {
+func (h *Hand) Play() (error, *Card) {
 	if h.IsComputer {
-		h.PlayAuto()
+		return h.PlayAuto()
 	} else {
-		h.PlayManual()
+		return h.PlayManual()
 	}
 }
 
-func (h *Hand) PlayAuto() {
-
-	if len(board.Cards) == 0 {
-		println("Initial Play, choosing any card")
-		i := random.Intn(len(h.Cards))
-		card := h.Cards[i]
-		h.Cards[i] = h.Cards[len(h.Cards)-1]
-		h.Cards = h.Cards[:len(h.Cards)-1]
-		board.Cards = append(board.Cards, card)
-		return
-	}
+func (h *Hand) PlayAuto() (error, *Card) {
 
 	for !h.CanPlay() {
 		println("can't play, drawing...")
@@ -192,17 +154,16 @@ func (h *Hand) PlayAuto() {
 			h.Cards = append(h.Cards, c)
 			h.Print()
 		} else {
-			return
+			// @todo: Should can't play be an error?
+			return nil, nil
 		}
 	}
 
-	// @todo: Add logic to decide the "best play".
-	// Currently we just play the first available card.
 	index, side, _ := h.determineBestPlay()
-	board.Play(h, index, side)
+	return board.Play(h, index, side)
 }
 
-func (h *Hand) PlayManual() {
+func (h *Hand) PlayManual() (error, *Card) {
 	for !h.CanPlay() {
 		var u string
 		println("You can't play, draw from pile (d)")
@@ -212,7 +173,7 @@ func (h *Hand) PlayManual() {
 			h.Cards = append(h.Cards, c)
 			h.Print()
 		} else {
-			return
+			return nil, nil
 		}
 	}
 
@@ -225,16 +186,7 @@ func (h *Hand) PlayManual() {
 		println("That card cannot be played")
 	}
 
-	board.Play(h, index, AskMe)
-}
-
-func (h *Hand) Print() {
-	print(h.Color, h.Name, ": ")
-	for _, v := range h.Cards {
-		fmt.Printf("[%d|%d] ", v.SideA, v.SideB)
-	}
-	fmt.Printf("  (len=%d)\n", len(h.Cards))
-	print("\033[0m") // Reset
+	return board.Play(h, index, AskMe)
 }
 
 func printCards(desc string, c []*Card) {
@@ -250,11 +202,6 @@ func printDrawPile() {
 	print("\033[0m") // Reset
 }
 
-func printBoard() {
-	printCards("\033[0;34mboard   ", board.Cards)
-	print("\033[0m") // Reset
-}
-
 func main() {
 
 	player1 = Hand{
@@ -265,7 +212,7 @@ func main() {
 
 	player2 = Hand{
 		Name:       "Mark",
-		IsComputer: false,
+		IsComputer: true,
 		Color:      "\033[0;33m",
 	}
 
@@ -274,30 +221,52 @@ func main() {
 		player2.Cards = append(player2.Cards, draw.Pick())
 	}
 
+	turn := true
+	msg := "Starting Game"
 	for true {
 		// @todo: Check for a locked board...
 
-		fmt.Println("\n\n\n")
-		printBoard()
+		// Print the board
+		board.Print()
 		player1.Print()
-		println("player1 is playing...")
-		player1.Play()
-		if len(player1.Cards) == 0 {
-			println("player1 Wins!")
-			break
-		}
-
-		fmt.Println("\n\n\n")
-		printBoard()
 		player2.Print()
-		println("player2 is playing...")
-		player2.Play()
-		if len(player2.Cards) == 0 {
-			println("player2 Wins!")
-			break
-		}
-	}
+		fmt.Printf("Last Play: %s\n", msg)
 
+		if turn {
+			fmt.Printf("Player 1's Turn\n")
+		} else {
+			fmt.Printf("Player 2's Turn\n")
+		}
+
+		if turn {
+			_, card := player1.Play()
+			if len(player1.Cards) == 0 {
+				println("player1 Wins!")
+				break
+			}
+
+			if card == nil {
+				msg = fmt.Sprintf("Player 1 could NOT play")
+			} else {
+				msg = fmt.Sprintf("Player 1 just played: [%d|%d]\n", card.SideA, card.SideB)
+			}
+
+		}
+
+		if !turn {
+			_, card := player2.Play()
+			if len(player2.Cards) == 0 {
+				println("player2 Wins!")
+				break
+			}
+			if card == nil {
+				msg = fmt.Sprintf("Player 2 could NOT play")
+			} else {
+				msg = fmt.Sprintf("Player 2 just played: [%d|%d]\n", card.SideA, card.SideB)
+			}
+		}
+
+		turn = !turn
+	}
 	println("End of Game")
-	printBoard()
 }
