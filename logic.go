@@ -22,9 +22,9 @@ func (h *Hand) count() int {
 	return maxIndex
 }
 
-func (h *Hand) playDoublesGreaterThenOrEqualTo(max int) (int, bool) {
+func (h *Hand) playDoublesGreaterThenOrEqualTo(b *Board, max int) (int, bool) {
 	for i, c := range h.Cards {
-		if !c.CanPlay() {
+		if !c.CanPlay(b) {
 			continue
 		}
 		for d := 6; d >= max; d-- {
@@ -37,15 +37,15 @@ func (h *Hand) playDoublesGreaterThenOrEqualTo(max int) (int, bool) {
 	return 0, false
 }
 
-func (h *Hand) squareItOffWithWhatIHaveMostOf(mostOf int) (int, Side, bool) {
+func (h *Hand) squareItOffWithWhatIHaveMostOf(b *Board, mostOf int) (int, Side, bool) {
 
-	if board.Left() != mostOf && board.Right() != mostOf {
+	if b.Left() != mostOf && b.Right() != mostOf {
 		return 0, LeftSide, false
 	}
 
 	for i, c := range h.Cards {
 
-		if !c.CanPlay() {
+		if !c.CanPlay(b) {
 			continue
 		}
 
@@ -53,26 +53,26 @@ func (h *Hand) squareItOffWithWhatIHaveMostOf(mostOf int) (int, Side, bool) {
 			continue
 		}
 
-		if board.Left() == mostOf {
-			if board.Right() == c.SideA {
+		if b.Left() == mostOf {
+			if b.Right() == c.SideA {
 				println("Squaring it off with what I have the most of on RIGHT", i)
 				return i, RightSide, true
 			}
 
-			if board.Right() == c.SideB {
+			if b.Right() == c.SideB {
 				//c.Flip()
 				println("Squaring it off with what I have the most of on RIGHT", i)
 				return i, RightSide, true
 			}
 		}
 
-		if board.Right() == mostOf {
-			if board.Left() == c.SideA {
+		if b.Right() == mostOf {
+			if b.Left() == c.SideA {
 				//c.Flip()
 				println("Squaring it off with what I have the most of on LEFT", i)
 				return i, RightSide, true
 			}
-			if board.Left() == c.SideB {
+			if b.Left() == c.SideB {
 				println("Squaring it off with what I have the most of on LEFT", i)
 				return i, RightSide, true
 			}
@@ -82,15 +82,15 @@ func (h *Hand) squareItOffWithWhatIHaveMostOf(mostOf int) (int, Side, bool) {
 	return 0, LeftSide, false
 }
 
-func (h *Hand) squareItOffIfPossible() (int, bool) {
+func (h *Hand) squareItOffIfPossible(b *Board) (int, bool) {
 	for i, c := range h.Cards {
-		if !c.CanPlay() {
+		if !c.CanPlay(b) {
 			continue
 		}
 
 		// If we can play a single card on either side, do it...
-		if (board.Left() == c.SideA && board.Right() == c.SideB) ||
-			(board.Left() == c.SideB && board.Right() == c.SideA) {
+		if (b.Left() == c.SideA && b.Right() == c.SideB) ||
+			(b.Left() == c.SideB && b.Right() == c.SideA) {
 			println("Squaring it off")
 			return i, true
 		}
@@ -99,18 +99,18 @@ func (h *Hand) squareItOffIfPossible() (int, bool) {
 	return 0, false
 }
 
-func (h *Hand) playWhatWeHaveMostOf(mostOf int) (int, bool) {
+func (h *Hand) playWhatWeHaveMostOf(b *Board, mostOf int) (int, bool) {
 	for i, c := range h.Cards {
-		if !c.CanPlay() {
+		if !c.CanPlay(b) {
 			continue
 		}
 
 		if c.SideA == mostOf {
-			if board.Left() == c.SideB {
+			if b.Left() == c.SideB {
 				println("Playing what I have most of, shooting those", mostOf)
 				return i, true
 			}
-			if board.Right() == c.SideB {
+			if b.Right() == c.SideB {
 				//flip()
 				println("Playing what I have most of, shooting those", mostOf)
 				return i, true
@@ -118,12 +118,12 @@ func (h *Hand) playWhatWeHaveMostOf(mostOf int) (int, bool) {
 		}
 
 		if c.SideB == mostOf {
-			if board.Left() == c.SideA {
+			if b.Left() == c.SideA {
 				//flip()
 				println("Playing what I have most of, shooting those", mostOf)
 				return i, true
 			}
-			if board.Right() == c.SideA {
+			if b.Right() == c.SideA {
 				println("Playing what I have most of, shooting those", mostOf)
 				return i, true
 			}
@@ -133,9 +133,9 @@ func (h *Hand) playWhatWeHaveMostOf(mostOf int) (int, bool) {
 	return 0, false
 }
 
-func (h *Hand) getFirstPlayableCard() (int, bool) {
+func (h *Hand) getFirstPlayableCard(b *Board) (int, bool) {
 	for i, c := range h.Cards {
-		if c.CanPlay() {
+		if c.CanPlay(b) {
 			println("Playing first playable card")
 			return i, true
 		}
@@ -143,33 +143,33 @@ func (h *Hand) getFirstPlayableCard() (int, bool) {
 	return 0, false
 }
 
-func (h *Hand) determineBestPlay() (int, Side, error) {
+func (h *Hand) determineBestPlay(b *Board) (int, Side, error) {
 
 	println("Determining best play")
 	mostOf := h.count()
 	println("You have the most of", mostOf)
 
-	if index, ok := h.playDoublesGreaterThenOrEqualTo(4); ok {
+	if index, ok := h.playDoublesGreaterThenOrEqualTo(b, 4); ok {
 		return index, LeftSide, nil
 	}
 
-	if index, side, ok := h.squareItOffWithWhatIHaveMostOf(mostOf); ok {
+	if index, side, ok := h.squareItOffWithWhatIHaveMostOf(b, mostOf); ok {
 		return index, side, nil
 	}
 
-	if index, ok := h.squareItOffIfPossible(); ok {
+	if index, ok := h.squareItOffIfPossible(b); ok {
 		return index, LeftSide, nil
 	}
 
-	if index, ok := h.playWhatWeHaveMostOf(mostOf); ok {
+	if index, ok := h.playWhatWeHaveMostOf(b, mostOf); ok {
 		return index, LeftSide, nil
 	}
 
-	if index, ok := h.playDoublesGreaterThenOrEqualTo(0); ok {
+	if index, ok := h.playDoublesGreaterThenOrEqualTo(b, 0); ok {
 		return index, LeftSide, nil
 	}
 
-	if index, ok := h.getFirstPlayableCard(); ok {
+	if index, ok := h.getFirstPlayableCard(b); ok {
 		return index, LeftSide, nil
 	}
 
