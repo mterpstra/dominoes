@@ -5,18 +5,59 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 )
 
 const MAX_PLAYERS = 2
 
-// @todo: Support more than 2 players
 type Game struct {
-	id            string
-	Players       [MAX_PLAYERS]*Hand
-	Draw          *DrawPile
-	Board         *Board
-	PlayerOneTurn bool
+	id      string
+	Players [MAX_PLAYERS]*Hand
+	Draw    *DrawPile
+	Board   *Board
+	Turn    int
+}
+
+type PlayResult int
+
+const (
+	CardPlayed PlayResult = iota
+	Passed
+	WonGame
+)
+
+// NewGame creates a new game including a new hydrated draw pile.
+func NewGame() *Game {
+	return &Game{
+		id:    guid(),
+		Draw:  NewDrawPile(),
+		Board: &Board{},
+		Turn:  0,
+	}
+}
+
+// AddPlayer add a player to the game.  If there are already two players, it returns an error.
+func (g *Game) AddPlayer(h *Hand) error {
+	for i := 0; i < MAX_PLAYERS; i++ {
+		if g.Players[i] == nil {
+			g.Players[i] = h
+			return nil
+		}
+	}
+	return errors.New(fmt.Sprintf("This game has %d players already", MAX_PLAYERS))
+}
+
+// Play is the driver of the game experience.
+func (g *Game) Play() {
+	g.drawCards()
+	for true {
+		// @todo: Check for a locked board...
+		g.display()
+
+		if play := g.play(); play == WonGame {
+			g.display()
+			return
+		}
+	}
 }
 
 func guid() string {
@@ -29,32 +70,7 @@ func guid() string {
 		b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-func NewGame() *Game {
-	return &Game{
-		id:            guid(),
-		Draw:          NewDrawPile(),
-		Board:         &Board{},
-		PlayerOneTurn: true,
-	}
-}
-
-// AddPlayer add a player to the game.  If there
-// are already two players, it returns an error.
-func (g *Game) AddPlayer(h *Hand) error {
-
-	for i := 0; i < MAX_PLAYERS; i++ {
-		if g.Players[i] == nil {
-			g.Players[i] = h
-			return nil
-		}
-	}
-
-	return errors.New(fmt.Sprintf("This game has %d players already", MAX_PLAYERS))
-}
-
-// DrawCards is called when the game begins and each player
-// draws 7 cards at random.
-func (g *Game) DrawCards() {
+func (g *Game) drawCards() {
 	for i := 1; i < 8; i++ {
 		for j := 0; j < MAX_PLAYERS; j++ {
 			g.Players[j].Cards = append(g.Players[j].Cards, g.Draw.Pick())
@@ -62,63 +78,36 @@ func (g *Game) DrawCards() {
 	}
 }
 
-// Print is used to print the game.
 func (g *Game) display() {
 	println(g.id)
 	g.Board.Print()
 	for j := 0; j < MAX_PLAYERS; j++ {
 		g.Players[j].Print()
 	}
-
-	if g.PlayerOneTurn {
-		fmt.Printf("Player 1's Turn\n")
-	} else {
-		fmt.Printf("Player 2's Turn\n")
-	}
+	fmt.Printf("Player [%s]'s Turn\n", g.Players[g.Turn].Name)
 }
 
-func (g *Game) Play() {
-	for true {
-		// @todo: Check for a locked board...
-		g.display()
-		g.play()
-	}
-}
-
-func (g *Game) play() {
-
-	msg := ""
+func (g *Game) play() PlayResult {
 	defer func() {
-		fmt.Printf("Last Play: %s\n", msg)
-		g.PlayerOneTurn = !g.PlayerOneTurn
+		g.Turn++
+		if g.Turn >= MAX_PLAYERS {
+			g.Turn = 0
+		}
 	}()
 
-	if g.PlayerOneTurn {
-		_, card := g.Players[0].Play(g.Board, g.Draw)
-		if len(g.Players[0].Cards) == 0 {
-			println("player1 Wins!")
-			// @todo: Better return code
-			os.Exit(0)
-		}
+	p := g.Players[g.Turn]
 
-		if card == nil {
-			msg = fmt.Sprintf("Player 1 could NOT play")
-		} else {
-			msg = fmt.Sprintf("Player 1 just played: [%d|%d]\n", card.SideA, card.SideB)
-		}
+	_, c := p.Play(g.Board, g.Draw)
+	if len(p.Cards) == 0 {
+		fmt.Printf("Player [%s] WINS!!!\n", p.Name)
+		return WonGame
 	}
 
-	if !g.PlayerOneTurn {
-		_, card := g.Players[1].Play(g.Board, g.Draw)
-		if len(g.Players[1].Cards) == 0 {
-			println("player2 Wins!")
-			// @todo: Better return code
-			os.Exit(0)
-		}
-		if card == nil {
-			msg = fmt.Sprintf("Player 2 could NOT play")
-		} else {
-			msg = fmt.Sprintf("Player 2 just played: [%d|%d]\n", card.SideA, card.SideB)
-		}
+	if c == nil {
+		fmt.Printf("Player [%s] could NOT play\n", p.Name)
+		return Passed
 	}
+
+	fmt.Printf("Player [%s] just played: [%d|%d]\n", p.Name, c.SideA, c.SideB)
+	return CardPlayed
 }

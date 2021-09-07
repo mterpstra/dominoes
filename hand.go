@@ -12,7 +12,6 @@ type Hand struct {
 }
 
 func (h *Hand) Print() {
-
 	print(h.Color)
 	fmt.Printf("Player %s (%d cards)\n", h.Name, len(h.Cards))
 
@@ -41,7 +40,6 @@ func (h *Hand) Print() {
 	}
 	fmt.Printf("\n")
 
-	// fmt.Printf("  (len=%d)\n", len(h.Cards))
 	print("\033[0m") // Reset
 }
 
@@ -63,7 +61,6 @@ func (h *Hand) Play(b *Board, d *DrawPile) (error, *Card) {
 }
 
 func (h *Hand) PlayAuto(b *Board, d *DrawPile) (error, *Card) {
-
 	for !h.CanPlay(b) {
 		println("can't play, drawing...")
 		if c := d.Pick(); c != nil {

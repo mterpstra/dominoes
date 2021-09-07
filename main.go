@@ -1,8 +1,8 @@
 package main
 
 func main() {
-
 	game := NewGame()
+
 	game.AddPlayer(&Hand{
 		Name:       "Computer",
 		IsComputer: true,
@@ -11,10 +11,9 @@ func main() {
 
 	game.AddPlayer(&Hand{
 		Name:       "Mark",
-		IsComputer: false,
+		IsComputer: true,
 		Color:      "\033[0;33m",
 	})
 
-	game.DrawCards()
 	game.Play()
 }
