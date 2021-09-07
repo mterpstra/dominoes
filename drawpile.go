@@ -9,6 +9,7 @@ type DrawPile struct {
 	Cards []*Card
 }
 
+// NewDrawPile will craete a new draw pile object an instantiate all the cards.
 func NewDrawPile() *DrawPile {
 	d := DrawPile{}
 	for i := 0; i <= 6; i++ {

@@ -169,6 +169,8 @@ func (h *Hand) determineBestPlay(b *Board) (int, Side, error) {
 		return index, LeftSide, nil
 	}
 
+	// @todo: Consider playing on the oposite side of the last player here.
+
 	if index, ok := h.getFirstPlayableCard(b); ok {
 		return index, LeftSide, nil
 	}
